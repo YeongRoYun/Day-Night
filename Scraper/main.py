@@ -1,4 +1,3 @@
-from re import A
 import time
 import logging
 import requests
@@ -14,8 +13,7 @@ if __name__ == '__main__':
     scraper = BlueRibbonSurveyScraper()
     db = DB(secret.dbConfig.user, secret.dbConfig.password, secret.dbConfig.host, secret.dbConfig.port, secret.dbConfig.db)
     
-    #for n, _ in enumerate(iter(bool, True), start=0):
-    for n in range(0, 1):
+    for n, _ in enumerate(iter(bool, True), start=0):
         path = '/restaurants/{}'.format(27121)
         scraper.setHeaders(path)
         if n % 1800 == 0:
@@ -40,7 +38,8 @@ if __name__ == '__main__':
             scraper.setHeaders(path, cookie, csrf_token)
 
         if n != 0 and n % 100 == 0:
-            time.sleep(5)
+            logging.info('processing... {}'.format(n))
+            time.sleep(10)
         
         try:
             info = scraper.scrape(path)
