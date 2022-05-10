@@ -101,7 +101,7 @@ class DB:
             else:
                 model = arg
             queries.append(select(type(model).id).where(type(model).name == model.name))
-        ids = db.query(*queries)
+        ids = self.query(*queries)
 
         try:
             strCafeAndTypeAndSiteIds = [rawId[0][0] for rawId in ids]

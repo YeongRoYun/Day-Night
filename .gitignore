@@ -130,3 +130,6 @@ dmypy.json
 
 # Secret
 Scraper/config/secret/
+
+# Log
+Scraper/*.log

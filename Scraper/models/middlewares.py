@@ -39,7 +39,7 @@ class ModelChanger:
             if model.isComplete:
                 newModel = dbModel.Type(id=model.id, name=model.name, createdAt=model.createdAt, updatedAt=model.updatedAt, deletedAt=model.deletedAt)
             else:
-                newModel = dbModel.TYpe(name=model.name)
+                newModel = dbModel.Type(name=model.name)
         elif isinstance(model, userModel.CafesType):
             if model.isComplete:
                 newModel = dbModel.CafesType(id=model.id, cafeId=model.cafeId, typeId=model.typeId)

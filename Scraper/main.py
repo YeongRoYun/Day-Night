@@ -55,7 +55,8 @@ if __name__ == '__main__':
                         site = userModel.Site(name=info['siteName'])
                         db.addAll(cafe, *types, site)
                         
-                        cafeId, typeIds, siteId = db.getIDs(cafe, *types, site)
+                        cafeId, siteId = db.getIDs(cafe, site)
+                        typeIds = db.getIDs(*types)
 
                         reviews = []
                         for content in info['cafeReviews']:

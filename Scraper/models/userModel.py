@@ -53,7 +53,7 @@ class Type(Base):
 class CafesType(Base):
     __tablename__ = 'cafes_types'
 
-    def __init__(self, cafeId, typeId, id):
+    def __init__(self, cafeId, typeId, id=None):
         self.isComplete = False
         self.cafeId = cafeId
         self.typeId = typeId
@@ -66,12 +66,12 @@ class CafesType(Base):
 class Review(Base):
     __tablename__ = 'reviews'
 
-    def __init__(self, content, preference, cafe, site, id, createdAt, updatedAt, deletedAt):
+    def __init__(self, content, cafe, site, preference=5, id=None, createdAt=None, updatedAt=None, deletedAt=None):
         self.isComplete = False
         self.content = content
-        self.preference = preference
         self.cafe = cafe
         self.site = site
+        self.preference = preference
 
         if id != None:
             self.isComplete = True
