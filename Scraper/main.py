@@ -1,12 +1,13 @@
 import time
 import logging
 import requests
-from models import userModel
-from models.middlewares import *
-from models.db import *
-from config import *
 from bs4 import BeautifulSoup
 from urllib.error import HTTPError, URLError
+
+from config import *
+from models.db import *
+from models import userModel
+from models.middlewares import *
 from scrapers import BlueRibbonSurveyScraper
 
 if __name__ == '__main__':
@@ -22,23 +23,23 @@ if __name__ == '__main__':
                 response = requests.get(scraper.rootUrl)
                 
             except HTTPError as e:
-                logging.error('HTTPError: 404 NOT FOUND')
+                logging.error(e)
                 time.sleep(5)
                 continue
             except URLError as e:
-                logging.critical('HTTPError: Server NOT FOUND')
+                logging.critical(e)
                 time.sleep(10)
                 continue
             except Exception as e:
-                logging.critical('UnknownError: ', e.message)
-                time.sleep(10)
+                logging.error(e)
+                time.sleep(5)
 
             bs = BeautifulSoup(response.text, 'html.parser')
             csrf_token = bs.find('meta', {'name':'_csrf'}).attrs['content']
             cookie = response.headers['set-cookie']
             scraper.setHeaders(path, cookie, csrf_token)
 
-        if n != 0 and n % 100 == 0:
+        if n != 0 and n % 200 == 0:
             logging.info('processing... {}'.format(n))
             time.sleep(5)
         
@@ -73,9 +74,9 @@ if __name__ == '__main__':
                         logging.critical('DBError')
 
         except URLError as e:
-            logging.critical('HTTPError: Server NOT FOUND')
+            logging.error(e)
             time.sleep(10)
 
         except Exception as e:
-            logging.critical('UnknownError')
-            time.sleep(10)
+            logging.error(e)
+            time.sleep(5)

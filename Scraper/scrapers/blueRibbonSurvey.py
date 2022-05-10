@@ -1,16 +1,17 @@
 import os
 import sys
 from pathlib import Path
-
 rootPath = Path(os.path.abspath(__file__)).parent.parent
 sys.path.append(rootPath)
 
 import re
 import logging
 import requests
-from .common import *
-from urllib.error import HTTPError, URLError
 from bs4 import BeautifulSoup
+from urllib.error import HTTPError, URLError
+
+from .common import *
+
 
 class BlueRibbonSurveyScraper:
     def __init__(self):
@@ -43,7 +44,6 @@ class BlueRibbonSurveyScraper:
     def getHeaders(self):
         return self.__headers
 
-    #Return: (siteName, cafeName, cafeType, cafeLocation, cafeReviews) or ()
     def scrape(self, relativeUrl):
         targetUrl = self.rootUrl + relativeUrl
         try:

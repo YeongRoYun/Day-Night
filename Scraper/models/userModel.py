@@ -1,7 +1,3 @@
-from turtle import up, update
-from venv import create
-
-
 class Base:
     pass
 

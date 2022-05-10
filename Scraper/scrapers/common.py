@@ -8,7 +8,7 @@ class CafeType(Enum):
     @classmethod
     def getTypes(cls, query):
         cafeKeywords = '디저트 차 커피 베이커리 카페 빙수'.split()
-        barKeywords = '바 칵테일'.split()
+        barKeywords = '칵테일 와인 샴페인'.split()
         cafeTypes = set()
         
         if cls.__isType(cls.Cafe, query, cafeKeywords):

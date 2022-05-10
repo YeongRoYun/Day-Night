@@ -1,6 +1,7 @@
 import os
 import sys
-rootPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+from pathlib import Path
+rootPath = Path(os.path.abspath(__file__)).parent.parent
 sys.path.append(rootPath)
 
 import time
