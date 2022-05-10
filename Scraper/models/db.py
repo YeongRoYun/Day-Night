@@ -7,9 +7,8 @@ import time
 import sqlalchemy as db
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
-from contextlib import contextmanager
-from .model import *
-
+from . import dbModel, userModel
+from .middlewares import ModelChanger, Mode
 
 class DB:
     def __init__(self, user='root', password='', host='localhost', port='3306', db=''):
@@ -22,42 +21,53 @@ class DB:
             try:
                 self.engine = db.create_engine(self.url, encoding='utf-8')
                 self.connection = self.engine.connect()
-                self.__Session = sessionmaker(self.engine)
+                self.Session = sessionmaker(self.engine)
                 
                 return
             except:
                 time.sleep(1)
-        raise Exception(message='DB Connection Fails')
+        raise NameError('connect(): Error')
 
-    def addAll(self, *args):
+    def addAll(self, *args, mode=Mode.User):
             newInstances = []
             for arg in args:
-                if not self.exist(arg):
-                    newInstances.append(arg)
+                if mode is Mode.DB:
+                    model = arg
+                else:
+                    model = ModelChanger.userToDb(arg)
+
+                if not self.exist(model, Mode.DB):
+                    newInstances.append(model)
+
             if len(newInstances) != 0:
                 try:
-                    with self.__Session() as session:
+                    with self.Session() as session:
                         session.add_all(newInstances)
                         session.commit()
                 except:
                    session.rollback()
-                   raise
+                   raise NameError('addAll(): Error')
     
-    def exist(self, instance):
-        if isinstance(instance, Cafe):
-            query = select(Cafe.id).where(Cafe.name == instance.name)
-        elif isinstance(instance, Type):
-            query = select(Type.id).where(Type.name == instance.name)
-        elif isinstance(instance, Site):
-            query = select(Site.id).where(Site.name == instance.name)
-        elif isinstance(instance, Review):
-            query = select(Review.id).where(Review.cafe == instance.cafe and Review.site == instance.site)
-        elif isinstance(instance, CafesType):
-            query = select(CafesType.id).where(CafesType.cafeId == instance.cafeId and CafesType.siteId == instance.siteId)
+    def exist(self, instance, mode=Mode.User):
+        if mode is Mode.User:
+            model = ModelChanger.userToDb(instance)
+        else:
+            model = instance
+
+        if isinstance(model, dbModel.Cafe):
+            query = select(dbModel.Cafe.id).where(dbModel.Cafe.name == model.name)
+        elif isinstance(model, dbModel.Type):
+            query = select(dbModel.Type.id).where(dbModel.Type.name == model.name)
+        elif isinstance(model, dbModel.Site):
+            query = select(dbModel.Site.id).where(dbModel.Site.name == model.name)
+        elif isinstance(model, dbModel.Review):
+            query = select(dbModel.Review.id).where(dbModel.Review.cafe == model.cafe and dbModel.Review.site == model.site)
+        elif isinstance(model, dbModel.CafesType):
+            query = select(dbModel.CafesType.id).where(dbModel.CafesType.cafeId == model.cafeId and dbModel.CafesType.siteId == model.siteId)
         else:
             return False
         
-        with self.__Session() as session:
+        with self.Session() as session:
             try:
                 result = session.execute(query).all()
 
@@ -68,12 +78,34 @@ class DB:
             except:
                 False
             
-    def query(self, *args):
-        with self.__Session() as session:
-            results = []
+    def query(self, *args, mode=Mode.User):
+        results = []
+        with self.Session() as session:
             try:
-                for query in args:
-                    results.append(session.execute(query))
-                return results
+                if mode is Mode.User:
+                    for arg in args:
+                        results.append(session.execute(arg).all())
+                else:
+                    for arg in args:
+                        results.append(session.execute(arg))
             except:
-                raise
+                raise NameError('query(): Error')
+        return results
+
+    def getIDs(self, *args, mode=Mode.User):
+        queries = []
+
+        for arg in args:
+            if mode is Mode.User:
+                model = ModelChanger.userToDb(arg)
+            else:
+                model = arg
+            queries.append(select(type(model).id).where(type(model).name == model.name))
+        ids = db.query(*queries)
+
+        try:
+            strCafeAndTypeAndSiteIds = [rawId[0][0] for rawId in ids]
+            return strCafeAndTypeAndSiteIds
+        except:
+            raise NameError('getIDs(): Error')
+        

@@ -7,7 +7,6 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 metadata = Base.metadata
 
-
 class Cafe(Base):
     __tablename__ = 'cafes'
 
@@ -57,10 +56,10 @@ class Review(Base):
     content = Column(Text(collation='utf8mb4_unicode_ci'), nullable=False)
     preference = Column(INTEGER, nullable=False, server_default=text("'5'"))
     cafe = Column(ForeignKey('cafes.id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
-    site = Column(ForeignKey('cafes.id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
+    site = Column(ForeignKey('sites.id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
     createdAt = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updatedAt = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
     deletedAt = Column(TIMESTAMP)
 
-    cafe1 = relationship('Cafe', primaryjoin='Review.cafe == Cafe.id')
-    cafe2 = relationship('Cafe', primaryjoin='Review.site == Cafe.id')
+    cafe1 = relationship('Cafe')
+    site1 = relationship('Site')

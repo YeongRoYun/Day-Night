@@ -61,9 +61,9 @@ class BlueRibbonSurveyScraper:
             return {}
         else:
             shopType = bs.find('ol', {'class':'foodtype'}).get_text()
-            cafeType = CafeType.getType(shopType)
+            cafeTypes = CafeType.getTypes(shopType)
             
-            if len(cafeType) == 0:
+            if len(cafeTypes) == 0:
                 return {}
             else:
                 info = bs.find('div', {'class': 'restaurant-info'})
@@ -72,4 +72,4 @@ class BlueRibbonSurveyScraper:
                 cafeReviews = info.find('div', {'class': re.compile('info-4')}).findAll('dd')
                 cafeReviews = list(map(lambda review: review.get_text().strip(), cafeReviews))
                 siteName = '블루리본서베이'
-                return {'siteName': siteName, 'cafeName': cafeName, 'cafeType': cafeType, 'cafeLoc': cafeLoc, 'cafeReviews': cafeReviews}
+                return {'siteName': siteName, 'cafeName': cafeName, 'cafeTypes': cafeTypes, 'cafeLoc': cafeLoc, 'cafeReviews': cafeReviews}

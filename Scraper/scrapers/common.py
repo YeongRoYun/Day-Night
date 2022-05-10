@@ -6,15 +6,15 @@ class CafeType(Enum):
     Bar = auto()
 
     @classmethod
-    def getType(cls, query):
+    def getTypes(cls, query):
         cafeKeywords = '디저트 차 커피 베이커리 카페 빙수'.split()
-        barKeywords = ''
+        barKeywords = '바 칵테일'.split()
         cafeTypes = set()
         
         if cls.__isType(cls.Cafe, query, cafeKeywords):
-            cafeTypes.add(cls.Cafe)
+            cafeTypes.add('카페')
         if cls.__isType(cls.Bar, query, barKeywords):
-            cafeTypes.add(cls.Bar)
+            cafeTypes.add('바')
         
         return cafeTypes
         
