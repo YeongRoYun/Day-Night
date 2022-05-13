@@ -1,15 +1,11 @@
-import os
-import sys
-from pathlib import Path
-rootPath = Path(os.path.abspath(__file__)).parent.parent
-sys.path.append(rootPath)
-
 import time
+import logging
+from .dbModel import *
 import sqlalchemy as db
+from .errors import DBError
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-from . import dbModel, userModel
-from .middlewares import ModelChanger, Mode
+from sqlalchemy.orm import sessionmaker, scoped_session
+
 
 class DB:
     def __init__(self, user='root', password='', host='localhost', port='3306', db=''):
@@ -20,93 +16,109 @@ class DB:
     def __connect(self):
         for _ in range(20):
             try:
-                self.engine = db.create_engine(self.url, encoding='utf-8')
+                self.engine = db.create_engine(self.url, convert_unicode=True, pool_size=2, pool_recycle=1800, max_overflow=0) #pool_size: 세션 호출 가능 자원 수
                 self.connection = self.engine.connect()
-                self.Session = sessionmaker(self.engine)
+                self.__Session = scoped_session(sessionmaker(bind=self.engine, autocommit=False, autoflush=True))
                 
                 return
             except:
                 time.sleep(1)
-        raise NameError('connect(): Error')
+        raise DBError()
 
-    def addAll(self, *args, mode=Mode.User):
-            newInstances = []
-            for arg in args:
-                if mode is Mode.DB:
-                    model = arg
-                else:
-                    model = ModelChanger.userToDb(arg)
-
-                if not self.exist(model, Mode.DB):
-                    newInstances.append(model)
-
-            if len(newInstances) != 0:
+    def saveInfo(self, info):
+        if info != None:
+            with self.__Session() as session:
                 try:
-                    with self.Session() as session:
-                        session.add_all(newInstances)
-                        session.commit()
+                    cafe = Cafe(name=info.cafeName, location=info.cafeLocation, preference=info.cafePreference, keywords=' '.join(info.cafeKeywords))
+                    types = [Type(name=type) for type in info.cafeTypes]
+                    site = Site(name=info.siteName)
+                    
+                    self.__addAll(cafe, *types, site)
+                    
+                    cafeId, siteId = self.__getIDs(cafe, site)
+                    typeIds = self.__getIDs(*types)
+
+                    reviews = []
+                    for review in info.cafeReviews:
+                        reviews.append(Review(content=review.content, cafe=cafeId, site=siteId, preference=review.preference, keywords=' '.join(review.keywords)))
+                    
+                    cafeAndTypes = []
+                    for typeId in typeIds:
+                        cafeAndTypes.append(CafesType(cafeId=cafeId, typeId=typeId))
+                    
+                    self.__addAll(*reviews, *cafeAndTypes)
+
+                    session.commit()
+                    logging.info('Save {}'.format(info.cafeName))
+
                 except:
-                   session.rollback()
-                   raise NameError('addAll(): Error')
+                    session.rollback()
+                    raise DBError()
+        else:
+            return
+
+    def __addAll(self, *models):
+           with self.__Session() as session:
+                try:
+                    newModels = []
+                    for model in models:
+                        if not self.__exist(model):
+                            newModels.append(model)
+                    if len(newModels) != 0:
+                        session.add_all(newModels)
+                except:
+                    session.rollback()
+                    raise DBError()
     
-    def exist(self, instance, mode=Mode.User):
-        if mode is Mode.User:
-            model = ModelChanger.userToDb(instance)
-        else:
-            model = instance
-
-        if isinstance(model, dbModel.Cafe):
-            query = select(dbModel.Cafe.id).where(dbModel.Cafe.name == model.name)
-        elif isinstance(model, dbModel.Type):
-            query = select(dbModel.Type.id).where(dbModel.Type.name == model.name)
-        elif isinstance(model, dbModel.Site):
-            query = select(dbModel.Site.id).where(dbModel.Site.name == model.name)
-        elif isinstance(model, dbModel.Review):
-            query = select(dbModel.Review.id).where(dbModel.Review.cafe == model.cafe and dbModel.Review.site == model.site)
-        elif isinstance(model, dbModel.CafesType):
-            query = select(dbModel.CafesType.id).where(dbModel.CafesType.cafeId == model.cafeId and dbModel.CafesType.siteId == model.siteId)
-        else:
-            return False
-        
-        with self.Session() as session:
+    def __exist(self, model):
+        with self.__Session() as session:
             try:
+                if isinstance(model, Cafe):
+                    query = select(Cafe.id).where(Cafe.name == model.name)
+                elif isinstance(model, Type):
+                    query = select(Type.id).where(Type.name == model.name)
+                elif isinstance(model, Site):
+                    query = select(Site.id).where(Site.name == model.name)
+                elif isinstance(model, Review):
+                    query = select(Review.id).where(Review.cafe == model.cafe and Review.site == model.site)
+                elif isinstance(model, CafesType):
+                    query = select(CafesType.id).where(CafesType.cafeId == model.cafeId and CafesType.siteId == model.siteId)
+                else:
+                    return False
+                
                 result = session.execute(query).all()
-
                 if len(result) != 0:
+                    logging.info('Already Exist')
                     return True
                 else:
                     return False
             except:
-                False
-            
-    def query(self, *args, mode=Mode.User):
-        results = []
-        with self.Session() as session:
+                session.rollback()
+                return False
+
+    def __getIDs(self, *models):
+        with self.__Session() as session:
             try:
-                if mode is Mode.User:
-                    for arg in args:
-                        results.append(session.execute(arg).all())
-                else:
-                    for arg in args:
-                        results.append(session.execute(arg))
+                queries = []
+                for model in models:
+                    queries.append(select(type(model).id).where(type(model).name == model.name))
+                
+                ids = self.__query(*queries)
+                strCafeAndTypeAndSiteIds = [rawId[0][0] for rawId in ids]
+                return strCafeAndTypeAndSiteIds
+            
             except:
-                raise NameError('query(): Error')
-        return results
+                session.rollback()
+                raise DBError()
 
-    def getIDs(self, *args, mode=Mode.User):
-        queries = []
-
-        for arg in args:
-            if mode is Mode.User:
-                model = ModelChanger.userToDb(arg)
-            else:
-                model = arg
-            queries.append(select(type(model).id).where(type(model).name == model.name))
-        ids = self.query(*queries)
-
-        try:
-            strCafeAndTypeAndSiteIds = [rawId[0][0] for rawId in ids]
-            return strCafeAndTypeAndSiteIds
-        except:
-            raise NameError('getIDs(): Error')
+    def __query(self, *args):
+        with self.__Session() as session:
+            try:
+                results = []
+                for arg in args:
+                    results.append(session.execute(arg).all())
+                return results
+            except:
+                session.rollback()
+                raise DBError()
         

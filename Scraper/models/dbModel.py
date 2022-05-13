@@ -7,12 +7,15 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 metadata = Base.metadata
 
+
 class Cafe(Base):
     __tablename__ = 'cafes'
 
     id = Column(INTEGER, primary_key=True, unique=True)
     name = Column(String(100, 'utf8mb4_unicode_ci'), nullable=False, unique=True)
     location = Column(String(200, 'utf8mb4_unicode_ci'), nullable=False)
+    keywords = Column(String(500, 'utf8mb4_unicode_ci'))
+    preference = Column(INTEGER, nullable=False, server_default=text("'5'"))
     createdAt = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updatedAt = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
     deletedAt = Column(TIMESTAMP)
@@ -53,8 +56,9 @@ class Review(Base):
     __tablename__ = 'reviews'
 
     id = Column(INTEGER, primary_key=True, unique=True)
-    content = Column(Text(collation='utf8mb4_unicode_ci'), nullable=False)
+    keywords = Column(String(500, 'utf8mb4_unicode_ci'))
     preference = Column(INTEGER, nullable=False, server_default=text("'5'"))
+    content = Column(Text(collation='utf8mb4_unicode_ci'), nullable=False)
     cafe = Column(ForeignKey('cafes.id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
     site = Column(ForeignKey('sites.id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
     createdAt = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

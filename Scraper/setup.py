@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
    name='Scraper',
-   version='1.0.0',
+   version='1.0.1',
    description='Review Scraper',
    author='YeongRoYun',
    author_email='appleofyyr@icloud.com',
