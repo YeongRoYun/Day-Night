@@ -104,6 +104,7 @@ class DiningCodeScraper:
 
 
     def __queryAtListPage(self, *args):
+        url = 'https://www.diningcode.com/list?'
         for arg in args:
             url += "query={}&".format(arg)
         

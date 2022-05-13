@@ -4,6 +4,9 @@ Scraper/config/secret/
 # Log
 Scraper/*.log
 
+# Save
+Scraper/scrapers/save/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
