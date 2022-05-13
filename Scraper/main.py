@@ -17,11 +17,13 @@ if __name__ == '__main__':
             scraper = BlueRibbonSurveyScraper()
 
         elif sys.argv[1].lower() == 'diningcode':
-            scraper = DiningCodeScraper('./scrapers/chromedriver')
+            
+            scraper = DiningCodeScraper(Path(os.path.abspath(__file__)).parent / 'scrapers' / 'chromedriver')
         else:
             raise IndexError
 
         scraper.scrape(sys.argv[2:])
+        sys.exit(0) #Normal Termination
 
     except IndexError as e:
         #python main.py blueribbon start 1 30
@@ -29,9 +31,14 @@ if __name__ == '__main__':
         #python main.py diningcode start 서울 카페
         #python main.py diningcode continue
         sys.stderr.write('python main.py [blueribbon | diningcode] [start | continue] [start end | query]\n')
-        exit(1)
+        sys.exit(2) #Abnormal Termination and need to check paramenters
+    except KeyboardInterrupt:
+        logging.info('Forced Termination by User')
+        sys.exit(3) #Forced Termination
+    
     except Exception as e:
         logging.error(e)
+        sys.exit(4) #Abnormal Termination
     finally:
-        logging.info('Scraper Exit')
+        logging.info('Scraper is over')
     

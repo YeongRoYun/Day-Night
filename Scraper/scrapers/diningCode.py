@@ -101,11 +101,10 @@ class DiningCodeScraper:
             writeSavePoint(ScraperType.DiningCode, list(cafeList), list(scrapedList))
             raise e
                 
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             writeSavePoint(ScraperType.DiningCode, list(cafeList), list(scrapedList))
             self.db.engine.dispose()
-            logging.info('Scraper Interrupted')
-            exit(1)
+            raise e
 
         except Exception as e:
             writeSavePoint(ScraperType.DiningCode, list(cafeList), list(scrapedList))

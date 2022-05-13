@@ -94,11 +94,10 @@ class BlueRibbonSurveyScraper:
             logging.info('Done Scraping!!!')
             return
         
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             writeSavePoint(ScraperType.BlueRibbonSurvey, start, current, end)
             self.db.engine.dispose()
-            logging.info('Scraper Interrupted')
-            exit(1)
+            raise e
         
         except Exception as e:
             writeSavePoint(ScraperType.BlueRibbonSurvey, start, current, end)
