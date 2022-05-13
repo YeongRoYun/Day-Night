@@ -1,4 +1,5 @@
 import time
+import signal
 import logging
 from .dbModel import *
 import sqlalchemy as db
@@ -14,43 +15,33 @@ class DB:
         self.__connect()
 
     def __connect(self):
-        for _ in range(20):
-            try:
-                self.engine = db.create_engine(self.url, convert_unicode=True, pool_size=5, pool_recycle=1800, max_overflow=10) #pool_size: 세션 호출 가능 자원 수
-                self.connection = self.engine.connect()
-                self.__Session = scoped_session(sessionmaker(bind=self.engine, autocommit=False, autoflush=True))
-                
-                return
-            except:
-                time.sleep(1)
-        raise DBError()
+        self.engine = db.create_engine(self.url, convert_unicode=True, pool_size=1, pool_recycle=1800, max_overflow=0) #pool_size: 세션 호출 가능 자원 수
+
 
     def saveInfo(self, info):
         if info != None:
-            with self.__Session() as session:
-                try:
-                    cafe = Cafe(name=info.cafeName, location=info.cafeLocation, preference=info.cafePreference, keywords=' '.join(info.cafeKeywords))
-                    types = [Type(name=type) for type in info.cafeTypes]
-                    site = Site(name=info.siteName)
-                    
-                    self.__addAll(session, cafe, *types, site)
-                    
-                    cafeId, siteId = self.__getIDs(session, cafe, site)
-                    typeIds = self.__getIDs(session, *types)
+            Session = sessionmaker(bind=self.engine, autocommit=False, autoflush=True)
+            with Session() as session:
+                cafe = Cafe(name=info.cafeName, location=info.cafeLocation, preference=info.cafePreference, keywords=' '.join(info.cafeKeywords))
+                types = [Type(name=type) for type in info.cafeTypes]
+                site = Site(name=info.siteName)
+                
+                self.__addAll(session, cafe, *types, site)
+                
+                cafeId, siteId = self.__getIDs(session, cafe, site)
+                typeIds = self.__getIDs(session, *types)
 
-                    reviews = []
-                    for review in info.cafeReviews:
-                        reviews.append(Review(content=review.content, cafe=cafeId, site=siteId, preference=review.preference, keywords=' '.join(review.keywords)))
-                    
-                    cafeAndTypes = []
-                    for typeId in typeIds:
-                        cafeAndTypes.append(CafesType(cafeId=cafeId, typeId=typeId))
-                    
-                    self.__addAll(session, *reviews, *cafeAndTypes)
-                    logging.info('Save {}'.format(info.cafeName))
-
-                except Exception as e:
-                    raise DBError()
+                reviews = []
+                for review in info.cafeReviews:
+                    reviews.append(Review(content=review.content, cafe=cafeId, site=siteId, preference=review.preference, keywords=' '.join(review.keywords)))
+                
+                cafeAndTypes = []
+                for typeId in typeIds:
+                    cafeAndTypes.append(CafesType(cafeId=cafeId, typeId=typeId))
+                
+                self.__addAll(session, *reviews, *cafeAndTypes)
+                session.commit()
+                logging.info('Save {}'.format(info.cafeName))
         else:
             return
 

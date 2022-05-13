@@ -18,12 +18,10 @@ if __name__ == '__main__':
 
         elif sys.argv[1].lower() == 'diningcode':
             scraper = DiningCodeScraper('./scrapers/chromedriver')
-
-        if scraper.scrape(sys.argv[2:]):
-            print('Scrape {} Done'.format(sys.argv[1]))
         else:
-            print('Scrape {} Fails'.format(sys.argv[1]))
+            raise IndexError
 
+        scraper.scrape(sys.argv[2:])
 
     except IndexError as e:
         #python main.py blueribbon start 1 30

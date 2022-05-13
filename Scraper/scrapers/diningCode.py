@@ -40,6 +40,7 @@ class DiningCodeScraper:
         
         service = Service(driverUrl)
         self.driver = webdriver.Chrome(service=service, options=options)
+        self.driver.implicitly_wait(60)
         self.db = DB(secret.dbConfig.user, secret.dbConfig.password, secret.dbConfig.host, secret.dbConfig.port, secret.dbConfig.db)
     
 
@@ -58,39 +59,32 @@ class DiningCodeScraper:
                     scrapedList = set(savePoint['visited'])
                     logging.info('load savePoint {}'.format('DiningCode'))
 
-                    if len(cafeList) != 0:
-                        url = cafeList.pop()
-                    else:
-                        logging.info('All visited')
-                        return True
-
                 else:
                     logging.warning('load fails')
                     return False
+            else:
+                raise IndexError
         except IndexError as e:
             raise e
         
         try:
-            self.driver.get(url)
-            defaultWindow = self.driver.window_handles[0]
-            cafeList.update(self.__getUrlAtListPage(defaultWindow, scrapedList))
+            if args[0] == 'start':
+                self.driver.get(url)
+                defaultWindow = self.driver.window_handles[0]
+                cafeList.update(self.__getUrlAtListPage(defaultWindow, scrapedList))
 
             while len(cafeList) != 0:
                 cafeUrl = cafeList.pop()
-                try:
-                    self.driver.get(cafeUrl)
-                    newCafeList, info = self.__scrapePage(defaultWindow, scrapedList)
-                    cafeList.update(newCafeList)
-                    self.db.saveInfo(info)
-                    scrapedList.add(info.cafeName)
-                    
-
-                except ScraperError as e:
-                    writeSavePoint(ScraperType.DiningCode, list(cafeList), list(scrapedList))
-                    raise e
-                except DBError as e:
-                    writeSavePoint(ScraperType.DiningCode, list(cafeList), list(scrapedList))
-                    raise e
+                self.driver.get(cafeUrl)
+                defaultWindow = self.driver.window_handles[0]
+                newCafeList, info = self.__scrapePage(defaultWindow, scrapedList)
+                cafeList.update(newCafeList)
+                self.db.saveInfo(info)
+                scrapedList.add(info.cafeName)
+                time.sleep(2)
+            
+            self.db.engine.dispose()
+            logging.info('Done Scraping!!!')
             return
 
         except ScraperError as e:
@@ -99,6 +93,7 @@ class DiningCodeScraper:
                 
         except KeyboardInterrupt:
             writeSavePoint(ScraperType.DiningCode, list(cafeList), list(scrapedList))
+            self.db.engine.dispose()
             logging.info('Scraper Interrupted')
             exit(1)
 
@@ -107,7 +102,7 @@ class DiningCodeScraper:
             raise e
         
         finally:
-            self.driver.close()
+            self.driver.quit() #모든 탭 종료
 
 
     def __queryAtListPage(self, *args):
@@ -124,7 +119,7 @@ class DiningCodeScraper:
         updatedBtnSelector = '#map > button.SearchMore.upper'
         try:
             while True:
-                btn = WebDriverWait(self.driver, 2).until(EC.presence_of_element_located((By.CSS_SELECTOR, updatedBtnSelector)))
+                btn = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, updatedBtnSelector)))
                 self.driver.execute_script('arguments[0].click();', btn)
                 time.sleep(.5)
 
@@ -171,12 +166,12 @@ class DiningCodeScraper:
             self.__spreadAllReviews()
             selectors = DiningCodeScraper.__selectors
 
-            cafeName = self.driver.find_element(by=By.CSS_SELECTOR, value=selectors['title']).text
-            cafeLocation = self.driver.find_element(by=By.CSS_SELECTOR, value=selectors['location']).text
-            rawTypes = self.driver.find_element(by=By.CSS_SELECTOR, value=selectors['type'])
+            cafeName = WebDriverWait(self.driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, selectors['title']))).text
+            cafeLocation = WebDriverWait(self.driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, selectors['location']))).text
+            rawTypes = WebDriverWait(self.driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, selectors['type'])))
             cafeTypes = CafeType.getTypes(rawTypes.text)
             
-            rawCafePreference = self.driver.find_element(by=By.CSS_SELECTOR, value=selectors['cafePreference'])
+            rawCafePreference = WebDriverWait(self.driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, selectors['cafePreference'])))
             cafePreference = float(rawCafePreference.text[:-1])*2
         
             rawReviewContents = self.driver.find_elements(by=By.CLASS_NAME, value = selectors['reviewContent'])
@@ -184,7 +179,7 @@ class DiningCodeScraper:
             rawReviewPreferences = self.driver.find_elements(by=By.CLASS_NAME, value=selectors['reviewPreference'][0])
             cafeReviews = self.__getReviews(rawReviewContents, rawReviewTags, rawReviewPreferences)
             
-            cafeList = self.__getUrlAtCafePage(defaultWindow, scrapedList)
+            cafeList = self.__getUrlAtCafePage(defaultWindow, scrapedList | set([self.driver.current_url])) #현재 페이지 제외
 
             return cafeList, Information(siteName=DiningCodeScraper.__siteName__, cafeName=cafeName, cafeTypes=cafeTypes, cafeLocation=cafeLocation, cafePreference=cafePreference, cafeReviews=cafeReviews)
         
@@ -223,7 +218,7 @@ class DiningCodeScraper:
         return reviews
 
     def __getUrlAtCafePage(self, defaultWindow, scrapedList):
-        keywordComponent = self.driver.find_element(by=By.CLASS_NAME, value='delisor-search')
+        keywordComponent = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'delisor-search')))
         keyword = keywordComponent.find_element(by=By.TAG_NAME,value='strong').text.strip("'")
         
         self.driver.execute_script("window.open();")
@@ -239,5 +234,3 @@ class DiningCodeScraper:
         self.driver.switch_to.window(window_name=defaultWindow)
         
         return cafeList
-
-    

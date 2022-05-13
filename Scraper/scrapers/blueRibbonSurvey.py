@@ -51,7 +51,7 @@ class BlueRibbonSurveyScraper:
                     logging.warning('load fails')
                     return False
             else:
-                return False
+                raise IndexError
         except IndexError as e:
             raise e
 
@@ -90,10 +90,13 @@ class BlueRibbonSurveyScraper:
                     writeSavePoint(ScraperType.BlueRibbonSurvey, start, current, end)
                     raise e
             
+            self.db.engine.dispose()
+            logging.info('Done Scraping!!!')
             return
         
         except KeyboardInterrupt:
             writeSavePoint(ScraperType.BlueRibbonSurvey, start, current, end)
+            self.db.engine.dispose()
             logging.info('Scraper Interrupted')
             exit(1)
         
