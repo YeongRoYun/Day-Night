@@ -9,12 +9,16 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, StaleElementReferenceException
 
-from config import secret
-from models.db import DB
-from models.errors import DBError
-from models.information import *
 from .common import *
+from models.db import DB
+from config import secret
 from .errors import ScraperError
+from models.information import *
+from models.errors import DBError
+
+
+
+
 
 class DiningCodeScraper:
     __siteName__ = '다이닝코드'
@@ -31,6 +35,9 @@ class DiningCodeScraper:
     def __init__(self, driverUrl):
         options = webdriver.ChromeOptions()
         options.add_argument('headless')
+        options.add_argument('incognito')
+        options.add_argument('--blink-settings=imagesEnabled=false')
+        
         service = Service(driverUrl)
         self.driver = webdriver.Chrome(service=service, options=options)
         self.db = DB(secret.dbConfig.user, secret.dbConfig.password, secret.dbConfig.host, secret.dbConfig.port, secret.dbConfig.db)
