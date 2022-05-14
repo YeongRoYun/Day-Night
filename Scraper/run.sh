@@ -19,8 +19,7 @@ echo "Scraper start"
 
 python main.py $@
 exitCode=$?
-echo "Error"
-echo $exitCode
+
 while [ "$exitCode" -eq 4 ]
 do
     echo 'Scraper abnormally closed'

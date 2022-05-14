@@ -91,7 +91,6 @@ class DiningCodeScraper:
                 cafeList.update(newCafeList)
                 self.db.saveInfo(info)
                 scrapedList.add(info.cafeName)
-                time.sleep(2)
             
             self.db.engine.dispose()
             logging.info('Done Scraping!!!')
@@ -189,7 +188,6 @@ class DiningCodeScraper:
             cafeReviews = self.__getReviews(rawReviewContents, rawReviewTags, rawReviewPreferences)
             
             cafeList = self.__getUrlAtCafePage(defaultWindow, scrapedList | set([self.driver.current_url])) #현재 페이지 제외
-
             return cafeList, Information(siteName=DiningCodeScraper.__siteName__, cafeName=cafeName, cafeTypes=cafeTypes, cafeLocation=cafeLocation, cafePreference=cafePreference, cafeReviews=cafeReviews)
         
         except ElementClickInterceptedException:
@@ -223,9 +221,18 @@ class DiningCodeScraper:
             preference = (preference/len(stars)) * 2
 
             review = Review(rawContent.text, rawTag.text.split(), preference)
-            reviews.append(review)
+            if self.__isUniqueReview(review, reviews):
+                reviews.append(review)
+            else:
+                continue
         return reviews
 
+    def __isUniqueReview(self, newReview, reviews):
+        for review in reviews:
+            if newReview == review:
+                return False
+        return True
+            
     def __getUrlAtCafePage(self, defaultWindow, scrapedList):
         keywordComponent = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'delisor-search')))
         keyword = keywordComponent.find_element(by=By.TAG_NAME,value='strong').text.strip("'")

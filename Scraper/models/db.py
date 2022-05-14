@@ -4,7 +4,7 @@ import logging
 from .dbModel import *
 import sqlalchemy as db
 from .errors import DBError
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 
@@ -20,28 +20,32 @@ class DB:
 
     def saveInfo(self, info):
         if info != None:
-            Session = sessionmaker(bind=self.engine, autocommit=False, autoflush=True)
-            with Session() as session:
-                cafe = Cafe(name=info.cafeName, location=info.cafeLocation, preference=info.cafePreference, keywords=' '.join(info.cafeKeywords))
-                types = [Type(name=type) for type in info.cafeTypes]
-                site = Site(name=info.siteName)
-                
-                self.__addAll(session, cafe, *types, site)
-                
-                cafeId, siteId = self.__getIDs(session, cafe, site)
-                typeIds = self.__getIDs(session, *types)
+            try:
+                Session = sessionmaker(bind=self.engine, autocommit=False, autoflush=True)
+                with Session() as session:
+                    cafe = Cafe(name=info.cafeName, location=info.cafeLocation, preference=info.cafePreference, keywords=' '.join(info.cafeKeywords))
+                    types = [Type(name=type) for type in info.cafeTypes]
+                    site = Site(name=info.siteName)
+                    
+                    self.__addAll(session, cafe, *types, site)
+                    session.commit()
+                    
+                    cafeId, siteId = self.__getIDs(session, cafe, site)
+                    typeIds = self.__getIDs(session, *types)
 
-                reviews = []
-                for review in info.cafeReviews:
-                    reviews.append(Review(content=review.content, cafe=cafeId, site=siteId, preference=review.preference, keywords=' '.join(review.keywords)))
-                
-                cafeAndTypes = []
-                for typeId in typeIds:
-                    cafeAndTypes.append(CafesType(cafeId=cafeId, typeId=typeId))
-                
-                self.__addAll(session, *reviews, *cafeAndTypes)
-                session.commit()
-                logging.info('Save {}'.format(info.cafeName))
+                    reviews = []
+                    for review in info.cafeReviews:
+                        reviews.append(Review(content=review.content, cafe=cafeId, site=siteId, preference=review.preference, keywords=' '.join(review.keywords)))
+                    
+                    cafeAndTypes = []
+                    for typeId in typeIds:
+                        cafeAndTypes.append(CafesType(cafeId=cafeId, typeId=typeId))
+                    
+                    self.__addAll(session, *reviews, *cafeAndTypes)
+                    session.commit()
+                    logging.info('Save {}'.format(info.cafeName))
+            except KeyboardInterrupt as e:
+                raise e
         else:
             return
 
@@ -62,9 +66,9 @@ class DB:
         elif isinstance(model, Site):
             query = select(Site.id).where(Site.name == model.name)
         elif isinstance(model, Review):
-            query = select(Review.id).where(Review.cafe == model.cafe and Review.site == model.site)
+            query = select(Review.id).where(and_(Review.cafe == model.cafe, Review.site == model.site, Review.content == model.content, Review.keywords == model.keywords))
         elif isinstance(model, CafesType):
-            query = select(CafesType.id).where(CafesType.cafeId == model.cafeId and CafesType.siteId == model.siteId)
+            query = select(CafesType.id).where(and_(CafesType.cafeId == model.cafeId, CafesType.typeId == model.typeId))
         else:
             return False
         
