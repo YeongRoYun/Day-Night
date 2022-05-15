@@ -53,7 +53,7 @@ def writeSavePoint(type, *args):
    
     elif type == ScraperType.DiningCode:
         with open(diningCodeSave, 'w') as fd:
-            log = {'unvisited': args[0], 'visited': args[1]}
+            log = {'unvisited': args[0]}
             json.dump(log, fd)
     else:
         pass

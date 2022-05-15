@@ -8,7 +8,7 @@ Status Code
 1: 예상치 못한 비정상 종료
 2: 매개변수 오류
 3: 사용자 종료(Keyboard Interrupt)
-4: 재실행 가능한 오류
+4: 핸들링 불가능 오류(Scraper Error)
 143: kill
 
 END
@@ -26,6 +26,7 @@ do
     sleep 5
     echo "Scraper restart"
     python main.py $1 "continue"
+    exitCode=$?
 done
 
 if [ "$exitCode"  -eq 0 ] || [ "$exitCode" -eq 143 ] ; then

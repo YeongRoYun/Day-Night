@@ -1,11 +1,8 @@
-import time
-import signal
 import logging
 from .dbModel import *
 import sqlalchemy as db
-from .errors import DBError
-from sqlalchemy import select, and_
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy import and_
+from sqlalchemy.orm import sessionmaker
 
 
 class DB:
@@ -17,81 +14,97 @@ class DB:
     def __connect(self):
         self.engine = db.create_engine(self.url, convert_unicode=True, pool_size=1, pool_recycle=1800, max_overflow=0) #pool_size: 세션 호출 가능 자원 수
 
+    def isAlreadyScraped(self, cafeName, siteName, typeName):
+        Session = sessionmaker(bind=self.engine, autocommit=False, autoflush=False)
+        with Session() as session:
+            site = session.query(Site).filter(Site.name == siteName).first()
+            if site == None:
+                return False
 
+            cafe = session.query(Cafe).filter(Cafe.name == cafeName).first()
+            if cafe == None:
+                return False
+
+            type = session.query(Type).filter(Type.name == typeName).first()
+            if type == None:
+                return False
+
+            cafeAndType = session.query(CafesType).filter(and_(CafesType.cafeId == cafe.id, CafesType.typeId == type.id))
+            if cafeAndType == None:
+                return False
+
+            reviewOfCafeInSite = session.query(Review).filter(and_(Review.cafe == cafe.id, Review.site == site.id))
+            if reviewOfCafeInSite == None:
+                return False
+
+            return True
+
+            
     def saveInfo(self, info):
         if info != None:
             try:
                 Session = sessionmaker(bind=self.engine, autocommit=False, autoflush=True)
                 with Session() as session:
                     cafe = Cafe(name=info.cafeName, location=info.cafeLocation, preference=info.cafePreference, keywords=' '.join(info.cafeKeywords))
-                    types = [Type(name=type) for type in info.cafeTypes]
-                    site = Site(name=info.siteName)
-                    
-                    self.__addAll(session, cafe, *types, site)
-                    session.commit()
-                    
-                    cafeId, siteId = self.__getIDs(session, cafe, site)
-                    typeIds = self.__getIDs(session, *types)
+                    res = self.__exist(session, cafe)
+                    if res == None:
+                        session.add(cafe)
+                    else:
+                        cafe = res
 
-                    reviews = []
-                    for review in info.cafeReviews:
-                        reviews.append(Review(content=review.content, cafe=cafeId, site=siteId, preference=review.preference, keywords=' '.join(review.keywords)))
+                    site = Site(name=info.siteName)
+                    res = self.__exist(session, site)
+                    if res == None:
+                        session.add(site)
+                    else:
+                        site = res
                     
-                    cafeAndTypes = []
-                    for typeId in typeIds:
-                        cafeAndTypes.append(CafesType(cafeId=cafeId, typeId=typeId))
+                    types = [Type(name=type) for type in info.cafeTypes]
+                    for idx in range(len(types)):
+                        res = self.__exist(session, types[idx])
+                        if res == None:
+                            session.add(types[idx])
+                        else:
+                            types[idx] = res
+
+                    session.commit()
+                
+                    for cafeReview in info.cafeReviews:
+                        review = Review(content=cafeReview.content, cafe=cafe.id, site=site.id, preference=cafeReview.preference, keywords=' '.join(cafeReview.keywords))
+                        res = self.__exist(session, review)
+                        if res == None:
+                            session.add(review)
                     
-                    self.__addAll(session, *reviews, *cafeAndTypes)
+                    for type in types:
+                        relration = CafesType(cafeId=cafe.id, typeId=type.id)
+                        res = self.__exist(session, relration)
+                        if res == None:
+                            session.add(relration)
+
                     session.commit()
                     logging.info('Save {}'.format(info.cafeName))
+
             except KeyboardInterrupt as e:
                 raise e
         else:
             return
-
-    def __addAll(self, session, *models):
-        newModels = []
-        for model in models:
-            if not self.__exist(session, model):
-                newModels.append(model)
-        if len(newModels) != 0:
-            session.add_all(newModels)
-               
     
-    def __exist(self, session, model):
-        if isinstance(model, Cafe):
-            query = select(Cafe.id).where(Cafe.name == model.name)
-        elif isinstance(model, Type):
-            query = select(Type.id).where(Type.name == model.name)
-        elif isinstance(model, Site):
-            query = select(Site.id).where(Site.name == model.name)
-        elif isinstance(model, Review):
-            query = select(Review.id).where(and_(Review.cafe == model.cafe, Review.site == model.site, Review.content == model.content, Review.keywords == model.keywords))
-        elif isinstance(model, CafesType):
-            query = select(CafesType.id).where(and_(CafesType.cafeId == model.cafeId, CafesType.typeId == model.typeId))
+    def __exist(self, session, instance):
+        if isinstance(instance, Cafe):
+            query = session.query(Cafe).filter(Cafe.name == instance.name)
+        elif isinstance(instance, Type):
+            query = session.query(Type).filter(Type.name == instance.name)
+        elif isinstance(instance, Site):
+            query = session.query(Site).filter(Site.name == instance.name)
+        elif isinstance(instance, Review):
+            query = session.query(Review).filter(and_(Review.cafe == instance.cafe, \
+            Review.site == instance.site, Review.content == instance.content, Review.keywords == instance.keywords))
+        elif isinstance(instance, CafesType):
+            query = session.query(CafesType).filter(and_(CafesType.cafeId == instance.cafeId, CafesType.typeId == instance.typeId))
         else:
             return False
         
-        result = session.execute(query).all()
-        if len(result) != 0:
-            logging.info('Already Exist')
-            return True
-        else:
-            return False
-
-    def __getIDs(self, session, *models):
-        queries = []
-        for model in models:
-            queries.append(select(type(model).id).where(type(model).name == model.name))
-        
-        ids = self.__query(session, *queries)
-        strCafeAndTypeAndSiteIds = [rawId[0][0] for rawId in ids]
-        return strCafeAndTypeAndSiteIds
-          
-
-    def __query(self, session, *args):
-        results = []
-        for arg in args:
-            results.append(session.execute(arg).all())
-        return results
-           
+        res = query.first()
+        if res != None:
+            logging.info('{} (id: {}) already exists'.format(type(res).__tablename__, res.id))
+        return res

@@ -9,6 +9,8 @@ from config import config
 from scrapers import BlueRibbonSurveyScraper
 from scrapers import DiningCodeScraper
 
+from scrapers.errors import ScraperError
+
 if __name__ == '__main__':
     logging.basicConfig(filename=config.logPath, encoding='utf-8', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     
@@ -36,9 +38,13 @@ if __name__ == '__main__':
         logging.info('Forced Termination by User')
         sys.exit(3) #Forced Termination
     
+    except ScraperError:
+        logging.warn('Scraper Error. Start...')
+        sys.exit(4)
+
     except Exception as e:
         logging.error(e)
         sys.exit(4) #Abnormal Termination
     finally:
-        logging.info('Scraper is over')
+        logging.info('Scraper is terminated')
     
